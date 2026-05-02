@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
 	"sync"
 )
 
@@ -20,70 +20,81 @@ type Store struct {
 	modifications []Modification
 }
 
+type Stats struct {
+	TotalMods int `json:"totalModifications"`
+	TotalCost int `json:"totalCost"`
+}
+
 func main() {
+
 	// 1. Initialize your store
-	// store := new(Store)
+	store := Store{
+		mu:            sync.Mutex{},
+		modifications: []Modification{},
+	}
 
 	// 2. Define your routes (POST /modifications, GET /modifications)
-	mux := http.NewServeMux()
-	http.HandleFunc("POST /modifications", postModifications)
-	mux.HandleFunc("GET /modifications", getModifications)
+	http.HandleFunc("POST /modifications", store.postModification)
+	http.HandleFunc("GET /modifications", store.getModifications)
+	http.HandleFunc("GET /modifications/stats", store.getStoreStats)
 
 	// 3. Start the server on an open port of your choice
-	http.ListenAndServe(":8080", mux)
+	fmt.Println("Starting server on port 8080...")
+	http.ListenAndServe(":8080", nil)
 }
 
-func postModifications(w http.ResponseWriter, r *http.Request) {
+func (store *Store) postModification(w http.ResponseWriter, r *http.Request) {
 
-	method := r.Method
-	body := r.Body
+	// lock the store
+	store.mu.Lock()
+	defer store.mu.Unlock()
 
-	if method != "POST" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	// decode the modification from the request body
+	var mod Modification
+	decoder := json.NewDecoder(r.Body)
+	decoder.Decode(&mod)
 
-	if body == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	// add the modification to the store
+	store.modifications = append(store.modifications, mod)
 
+	// write the response
+	w.WriteHeader(http.StatusCreated)
+	fmt.Println(mod, "successfully stored.")
 }
 
-func getModifications(w http.ResponseWriter, r *http.Request) {
+func (store *Store) getModifications(w http.ResponseWriter, r *http.Request) {
 
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	// lock the store
+	store.mu.Lock()
+	defer store.mu.Unlock()
 
-	method := r.Method
-	if method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// TODO
-	store := new(Store)
-	modification := findModification(id, store)
-
+	// write the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
-	err = json.NewEncoder(w).Encode(modification)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	json.NewEncoder(w).Encode(store.modifications)
 }
 
-func findModification(id int, store *Store) Modification {
-	var modification Modification
+func (store *Store) getStoreStats(w http.ResponseWriter, r *http.Request) {
+
+	// lock the store
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	// declare variables
+	var count int
+	var total int
+
+	// loop through modifications, adding up the cost, and counting each
 	for _, mod := range store.modifications {
-		if mod.ID == id {
-			modification = mod
-		}
+		count++
+		total += mod.Cost
 	}
-	return modification
+
+	// create a stats object
+	stats := Stats{count, total}
+
+	// write the response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(stats)
 }
