@@ -2,79 +2,45 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
-func (store *Store) postModification(w http.ResponseWriter, r *http.Request) {
-
-	store.mu.Lock()
-	defer store.mu.Unlock()
-
-	// decode the modification from the request body
-	var mod Modification
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&mod)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+// handlePostMod handles the POST /modifications route
+func (store *Store) handlePostMod(w http.ResponseWriter, r *http.Request) {
+	var req Modification
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// validate the modification doesn't exist
-	for _, m := range store.modifications {
-		if m.ID == mod.ID {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	}
-
-	// validate the modification's priority
-	if mod.Priority < 1 || mod.Priority > 5 {
-		w.WriteHeader(http.StatusBadRequest)
+	if err := req.validate(); err != nil {
+		writeJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// add the modification to the store
-	store.modifications = append(store.modifications, mod)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(mod)
+	if err := store.addMods(req); err != nil {
+		writeJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, req)
 }
 
-func (store *Store) getModifications(w http.ResponseWriter, r *http.Request) {
+// handleGetMods handles the GET /modifications route
+func (store *Store) handleGetMods(w http.ResponseWriter, r *http.Request) {
+	mods := store.getMods()
+	writeJSON(w, http.StatusOK, mods)
+}
 
-	store.mu.Lock()
-	defer store.mu.Unlock()
+// handleGetStats handles the GET /stats route
+func (store *Store) handleGetStats(w http.ResponseWriter, r *http.Request) {
+	stats := store.getStats()
+	writeJSON(w, http.StatusOK, stats)
+}
 
-	var status int
-	if len(store.modifications) == 0 {
-		status = http.StatusNoContent
-	} else {
-		status = http.StatusOK
-	}
-
+// writeJSON helper function to write JSON to the response
+func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(store.modifications)
-}
-
-func (store *Store) getStoreStats(w http.ResponseWriter, r *http.Request) {
-
-	store.mu.Lock()
-	defer store.mu.Unlock()
-
-	var count = len(store.modifications)
-	var total int
-
-	// loop through modifications, adding up the cost, and counting each
-	for _, mod := range store.modifications {
-		total += mod.Cost
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("json encode error: %v", err)
 	}
-
-	// create a stats object
-	stats := Stats{count, total}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(stats)
 }

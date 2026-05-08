@@ -1,21 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 )
 
 func main() {
 
 	// 1. Initialize your store
-	store := Store{}
+	store := newStore()
 
-	// 2. Define your routes (POST /modifications, GET /modifications)
-	http.HandleFunc("POST /modifications", store.postModification)
-	http.HandleFunc("GET /modifications", store.getModifications)
-	http.HandleFunc("GET /modifications/stats", store.getStoreStats)
+	// 2. Define your routes (POST /modifications, GET /modifications, GET /stats)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /modifications", store.handlePostMod)
+	mux.HandleFunc("GET /modifications", store.handleGetMods)
+	mux.HandleFunc("GET /stats", store.handleGetStats)
 
 	// 3. Start the server on an open port of your choice
-	fmt.Println("Starting server on port 8080...")
-	http.ListenAndServe(":8080", nil)
+	log.Println("Starting server on port 8080...")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
