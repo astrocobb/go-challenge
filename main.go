@@ -8,7 +8,7 @@ import (
 func main() {
 
 	// 1. Initialize your store
-	store := newStore()
+	store := NewStore()
 
 	// 2. Define your routes (POST /modifications, GET /modifications, GET /stats)
 	mux := http.NewServeMux()

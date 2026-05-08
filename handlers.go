@@ -17,7 +17,7 @@ func (store *Store) handlePostMod(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := store.addMods(req); err != nil {
+	if err := store.AddMods(req); err != nil {
 		writeJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -26,13 +26,13 @@ func (store *Store) handlePostMod(w http.ResponseWriter, r *http.Request) {
 
 // handleGetMods handles the GET /modifications route
 func (store *Store) handleGetMods(w http.ResponseWriter, r *http.Request) {
-	mods := store.getMods()
+	mods := store.GetMods()
 	writeJSON(w, http.StatusOK, mods)
 }
 
 // handleGetStats handles the GET /stats route
 func (store *Store) handleGetStats(w http.ResponseWriter, r *http.Request) {
-	stats := store.getStats()
+	stats := store.GetStats()
 	writeJSON(w, http.StatusOK, stats)
 }
 

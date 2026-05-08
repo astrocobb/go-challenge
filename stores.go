@@ -15,15 +15,15 @@ type Stats struct {
 	TotalCost int `json:"totalCost"`
 }
 
-// newStore Constructor
-func newStore() *Store {
+// NewStore Constructor
+func NewStore() *Store {
 	return &Store{
 		modifications: make([]Modification, 0),
 	}
 }
 
-// addMods adds a modification to the store calling it
-func (store *Store) addMods(mod Modification) error {
+// AddMods adds a modification to the store calling it
+func (store *Store) AddMods(mod Modification) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	for _, existingMod := range store.modifications {
@@ -35,8 +35,8 @@ func (store *Store) addMods(mod Modification) error {
 	return nil
 }
 
-// getMods returns all the store's modifications
-func (store *Store) getMods() []Modification {
+// GetMods returns all the store's modifications
+func (store *Store) GetMods() []Modification {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	out := make([]Modification, len(store.modifications))
@@ -44,8 +44,8 @@ func (store *Store) getMods() []Modification {
 	return out
 }
 
-// getStats returns the store's stats
-func (store *Store) getStats() Stats {
+// GetStats returns the store's stats
+func (store *Store) GetStats() Stats {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	var totalCost int
